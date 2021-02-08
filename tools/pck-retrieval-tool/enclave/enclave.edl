@@ -1,0 +1,16 @@
+enclave {
+    from "sgx_tstd.edl" import *;
+    from "sgx_stdio.edl" import *;
+    from "sgx_backtrace.edl" import *;
+    from "sgx_tstdc.edl" import *;
+
+    include "sgx_report.h"
+    // for DCAP
+    include "sgx_qve_header.h" 
+    include "sgx_ql_quote.h"
+
+    trusted {
+        public sgx_status_t ecall_new_report([out] sgx_report_t *report,
+            [in] const sgx_target_info_t *qe3_target);
+    };
+};
