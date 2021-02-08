@@ -8,6 +8,8 @@ use sgx_urts::SgxEnclave;
 mod codec;
 mod pck;
 
+use pck::PCK;
+
 extern "C" {
     fn ecall_new_report(
         eid: sgx_enclave_id_t,
@@ -243,5 +245,8 @@ fn main() {
     //}
     //println!();
 
-    decode_quote3(quote.as_slice());
+    //decode_quote3(quote.as_slice());
+    let pck = PCK::must_from_quote3(quote.as_slice());
+    let pck_json = serde_json::to_string(&pck).expect("json marshaling");
+    println!("PCK: {}",pck_json);
 }
