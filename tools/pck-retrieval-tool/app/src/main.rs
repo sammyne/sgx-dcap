@@ -1,7 +1,12 @@
+#![allow(safe_packed_borrows)]
+
 use std::ffi::CString;
 
 use sgx_types::*;
 use sgx_urts::SgxEnclave;
+
+mod codec;
+mod pck;
 
 extern "C" {
     fn ecall_new_report(
@@ -92,28 +97,40 @@ fn decode_quote3(quote: &[u8]) {
     // ref: https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/DCAP_1.9/QuoteGeneration/quote_wrapper/common/inc/sgx_quote_3.h#L58
     //assert_eq!(
     //    ql_certification_data.cert_key_type,
-    //    sgx_ql_cert_key_type_t::PPID_RSA3072_ENCRYPTED as u16
+    //    sgx_ql_cert_key_type_t::PPID_RSA3072_ENCRYPTED as u16,
+    //    "expect cert key of type PPID_RSA3072_ENCRYPTED"
     //);
 
-    const ENC_PPID_LEN: usize = 384;
+    let tail_content = sig[certification_info_data_offset..].as_ref();
+    let enc_ppid_len = 384;
+    let enc_ppid: &[u8] = &tail_content[0..enc_ppid_len];
+    let pce_id: &[u8] = &tail_content[enc_ppid_len..enc_ppid_len + 2];
+    let cpu_svn: &[u8] = &tail_content[enc_ppid_len + 2..enc_ppid_len + 2 + 16];
+    let pce_isvsvn: &[u8] = &tail_content[enc_ppid_len + 2 + 16..enc_ppid_len + 2 + 18];
+    println!("          EncPPID: {:02x?}", enc_ppid);
+    println!("           PCE_ID: {:02x?}", pce_id);
+    println!("    TCBr - CPUSVN: {:02x?}", cpu_svn);
+    println!("TCBr - PCE_ISVSVN: {:02x?}", pce_isvsvn);
+    println!("            QE_ID: {:02x?}", quote3.header.user_data);
 
-    let certification_info_data = sig[certification_info_data_offset..].as_ref();
-    let enc_ppid: &[u8] = &certification_info_data[0..ENC_PPID_LEN];
-    let pce_id: &[u8] = &certification_info_data[ENC_PPID_LEN..ENC_PPID_LEN + 2];
-    let cpu_svn: &[u8] = &certification_info_data[ENC_PPID_LEN + 2..ENC_PPID_LEN + 2 + 16];
-    let pce_isvsvn: &[u8] = &certification_info_data[ENC_PPID_LEN + 2 + 16..ENC_PPID_LEN + 2 + 18];
-    println!("EncPPID:\n{:02x?}", enc_ppid);
-    println!("PCE_ID:\n{:02x?}", pce_id);
-    println!("TCBr - CPUSVN:\n{:02x?}", cpu_svn);
-    println!("TCBr - PCE_ISVSVN:\n{:02x?}", pce_isvsvn);
-    println!("QE_ID:\n{:02x?}", quote3.header.user_data);
-
+    /*
+    // convert as sgx_ql_ppid_rsa3072_encrypted_cert_info_t produces wrong result.
     let info = unsafe {
         let v = sig[certification_info_data_offset..].as_ptr()
             as *const sgx_ql_ppid_rsa3072_encrypted_cert_info_t;
         *v
     };
-    println!("EncPPID:\n{:02x?}", info.enc_ppid);
+
+    const QE_ID_LEN: usize = 16;
+    println!("          EncPPID: {:02x?}", info.enc_ppid);
+    println!("    TCBr - CPUSVN: {:02x?}", info.cpu_svn.svn);
+    println!("TCBr - PCE_ISVSVN: {:02x?}", info.pce_info.pce_isv_svn);
+    println!("           PCE_ID: {:02x?}", &info.pce_info.pce_id);
+    println!(
+        "            QE_ID: {:02x?}",
+        &quote3.header.user_data[..QE_ID_LEN]
+    );
+    */
 }
 
 fn error_out_if_not_ok(status: sgx_status_t, tip: &str) -> Result<(), String> {
@@ -125,10 +142,6 @@ fn error_out_if_not_ok(status: sgx_status_t, tip: &str) -> Result<(), String> {
 }
 
 fn generate_quote(eid: sgx_enclave_id_t) -> Result<Vec<u8>, String> {
-    //let _ = unsafe {
-    //    libloading::Library::new("./libdcap_quoteprov.so.1").expect("load libdcap_quoteprov")
-    //};
-
     let qe3_target = {
         let mut out = sgx_target_info_t::default();
         let err = unsafe { sgx_qe_get_target_info(&mut out as *mut sgx_target_info_t) };
@@ -221,14 +234,14 @@ fn main() {
 
     let quote = generate_quote(enclave.geteid()).expect("generate quote");
 
-    println!("quote size: {}", quote.len());
-    for (i, v) in quote.iter().enumerate() {
-        print!("{:02x}", v);
-        if (i + 1) % 64 == 0 {
-            println!();
-        }
-    }
-    println!();
+    //println!("quote size: {}", quote.len());
+    //for (i, v) in quote.iter().enumerate() {
+    //    print!("{:02x}", v);
+    //    if (i + 1) % 64 == 0 {
+    //        println!();
+    //    }
+    //}
+    //println!();
 
     decode_quote3(quote.as_slice());
 }
