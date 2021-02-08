@@ -21,7 +21,7 @@ set(key ${enclavePath}/isv.pem)
 add_subdirectory(enclave)
 add_subdirectory(app)
 
-add_custom_target(format-${PROJECT_NAME}
+add_custom_target(format
     DEPENDS format-${app} format-${enclave}
 )
 
@@ -46,7 +46,7 @@ add_custom_target(pack
 )
 
 add_custom_target(run
-    COMMAND ./app ${enclaveLib}
+    COMMAND LD_PRELOAD=$PWD/libdcap_quoteprov.so.1 ./app ${enclaveLib}
     DEPENDS pack
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/_packed
 )
