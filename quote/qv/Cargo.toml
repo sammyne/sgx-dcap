@@ -1,5 +1,5 @@
 [package]
-name = "quoteverify"
+name = "qv"
 version = "0.1.0"
 authors = ["sammyne <lixiangmin01@baidu.com>"]
 edition = "2018"

@@ -13,11 +13,10 @@ outDir=$workdir/_packed
 rm -rf $outDir
 mkdir $outDir
 
-cd $workdir
-
-bash build_legacy.sh
-
-cp _lib/* $outDir/
+#cd $workdir
+#
+#bash build_legacy.sh
+#cp _lib/* $outDir/
 
 cd $workdir/testbot
 

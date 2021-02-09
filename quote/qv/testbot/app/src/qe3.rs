@@ -50,7 +50,7 @@ pub unsafe extern "C" fn ocall_sgx_qv_verify_quote(
     // call DCAP quote verify library to get supplemental data size
     *supplemental_data_ok = {
         let mut supplemental_data_size = 0u32;
-        let qve_err = quoteverify::sgx_qv_get_quote_supplemental_data_size(&mut supplemental_data_size);
+        let qve_err = qv::sgx_qv_get_quote_supplemental_data_size(&mut supplemental_data_size);
         if qve_err == sgx_quote3_error_t::SGX_QL_SUCCESS
             && supplemental_data_size == (mem::size_of::<sgx_ql_qv_supplemental_t>() as u32)
         {
@@ -66,7 +66,7 @@ pub unsafe extern "C" fn ocall_sgx_qv_verify_quote(
         }
     };
 
-    quoteverify::sgx_qv_verify_quote(
+    qv::qv_verify_quote(
         quote,
         quote_size,
         ptr::null(),
