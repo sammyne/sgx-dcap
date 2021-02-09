@@ -1,0 +1,42 @@
+enclave {
+    from "sgx_tstd.edl"             import *;
+    from "sgx_stdio.edl"            import *;
+    from "sgx_tstdc.edl"            import *;
+    from "sgx_backtrace.edl"        import *;
+    from "sgx_time.edl"             import *;
+    from "sgx_fs.edl"               import *;
+    from "sgx_fd.edl"               import *;
+    from "sgx_net.edl"              import *;
+    from "sgx_env.edl"              import *;
+    from "sgx_tprotected_fs.edl"    import *;
+
+    trusted {
+        public int ecall_generate_then_verify_dcap_quote();
+    };
+
+    // for DCAP
+    include "sgx_qve_header.h" 
+    include "sgx_ql_quote.h"
+
+    untrusted {
+        quote3_error_t ocall_sgx_qe_get_target_info([out] sgx_target_info_t *info);
+        quote3_error_t ocall_sgx_qe_get_quote(
+            [in] sgx_report_t *report,
+            [out, size=quote_max_size] uint8_t *quote,
+            uint32_t quote_max_size,
+            [out] uint32_t *quote_size
+        );
+
+        // @TODO: quote may changed as user_check
+        // @note quote_collateral is set to null
+        quote3_error_t ocall_sgx_qv_verify_quote(
+            [in, size=quote_size] const uint8_t *quote,
+            uint32_t quote_size,
+            time_t expiration_check_date,
+            [out] uint32_t *collateral_expiration_status,
+            [out] sgx_ql_qv_result_t *quote_verification_result,
+            [in, out] sgx_ql_qe_report_info_t *qve_report_info,
+            [out] sgx_ql_qv_supplemental_t* supplemental_data,
+            [out] uint8_t *supplemental_data_ok);
+    };
+};
