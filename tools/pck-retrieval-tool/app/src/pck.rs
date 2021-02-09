@@ -99,8 +99,7 @@ impl PCK {
             out
         };
 
-        let encrypted_ppid: [u8; 384] =
-            must_take(384).try_into().expect("invalid encrypted PPID");
+        let encrypted_ppid: [u8; 384] = must_take(384).try_into().expect("invalid encrypted PPID");
         let pce_id: [u8; 2] = must_take(2).try_into().expect("invalid PCE ID");
         let cpu_svn: [u8; 16] = must_take(16).try_into().expect("invalid CPU SVN");
         let pce_isvsvn: [u8; 2] = must_take(2).try_into().expect("invalid PCE ISV SVN");
