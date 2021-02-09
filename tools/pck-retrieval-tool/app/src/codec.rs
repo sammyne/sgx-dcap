@@ -17,7 +17,7 @@ where
     serializer.serialize_str(&hexlify(bytes))
 }
 
-fn hexlify(data: &[u8]) -> String {
+pub fn hexlify(data: &[u8]) -> String {
     let mut out = String::with_capacity(data.len());
 
     for v in data {

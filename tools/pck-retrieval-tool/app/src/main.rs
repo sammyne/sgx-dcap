@@ -1,6 +1,6 @@
 #![allow(safe_packed_borrows)]
 
-use std::ffi::CString;
+use std::fs;
 
 use clap::Clap;
 
@@ -15,7 +15,7 @@ mod quote3;
 use pck::PCK;
 
 #[derive(Clap)]
-#[clap(version = "1.9", author = "sammyne")]
+#[clap(version = "1.9.100.3", author = "sammyne")]
 struct Opts {
     #[clap(
         default_value = "enclave.signed.so",
@@ -70,22 +70,32 @@ fn main() {
     quote3::set_qpl_path(&opts.qpl_path);
 
     let enclave = new_enclave(&opts.enclave_path)
-        .map_err(|err| format!("new enclave: {}", err))
+        .map_err(|err| format!("new enclave from {}: {}", opts.enclave_path, err))
         .unwrap();
-    println!("[+] done new enclave: {}", enclave.geteid());
+    //println!("[+] done new enclave: {}", enclave.geteid());
 
     let quote = quote3::generate_quote(enclave.geteid()).expect("generate quote");
 
-    //println!("quote size: {}", quote.len());
-    //for (i, v) in quote.iter().enumerate() {
-    //    print!("{:02x}", v);
-    //    if (i + 1) % 64 == 0 {
-    //        println!();
-    //    }
-    //}
-    //println!();
+    let quote_hex = codec::hexlify(quote.as_slice());
+    match opts.quote_out_path {
+        Some(v) => fs::write(v, quote_hex).expect("fail to save quote"),
+        None => {
+            println!("------------------");
+            println!("quote");
+            println!("{}", quote_hex);
+            println!("------------------");
+        }
+    }
 
     let pck = PCK::must_from_quote3(quote.as_slice());
     let pck_json = serde_json::to_string(&pck).expect("json marshaling");
-    println!("PCK: {}", pck_json);
+    match opts.pck_out_path {
+        Some(v) => fs::write(v, pck_json).expect("fail to save PCK"),
+        None => {
+            println!("------------------");
+            println!("PCK");
+            println!("{}", pck_json);
+            println!("------------------");
+        }
+    }
 }
