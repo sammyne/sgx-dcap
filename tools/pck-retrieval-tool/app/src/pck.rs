@@ -13,6 +13,8 @@ pub struct PCK {
     cpu_svn: [u8; 16],
     #[serde(serialize_with = "crate::codec::serialize_slice")]
     pce_isvsvn: [u8; 2],
+    #[serde(serialize_with = "crate::codec::serialize_slice")]
+    qe_id: [u8; 16],
 }
 
 impl PCK {
@@ -54,39 +56,27 @@ impl PCK {
             "invalid sig length"
         );
 
-        // signature_data has a header of sgx_ql_ecdsa_sig_data_t structure
-        //let p_sig_data: * const sgx_ql_ecdsa_sig_data_t = quote_signature_data_vec.as_ptr() as _;
-        // mem copy
-        //let sig_data = unsafe { * p_sig_data };
-
         // sgx_ql_ecdsa_sig_data_t is followed by sgx_ql_auth_data_t
         // create a new vec for auth_data
         let ql_auth_certification_data_offset = std::mem::size_of::<sgx_ql_ecdsa_sig_data_t>();
         let ql_auth_data_ptr =
             (sig[ql_auth_certification_data_offset..]).as_ptr() as *const sgx_ql_auth_data_t;
         let ql_auth_data = unsafe { *ql_auth_data_ptr };
-        //println!("auth_data len = {}", auth_data_header.size);
 
         let auth_data_offset =
             ql_auth_certification_data_offset + std::mem::size_of::<sgx_ql_auth_data_t>();
 
         // It should be [0,1,2,3...]
         // defined at https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/4605fae1c606de4ff1191719433f77f050f1c33c/QuoteGeneration/quote_wrapper/quote/qe_logic.cpp#L1452
-        //let auth_data_vec: Vec<u8> = quote_signature_data_vec[auth_data_offset..auth_data_offset + auth_data_header.size as usize].into();
-        //println!("Auth data:\n{:?}", auth_data_vec);
 
         let ql_certification_data_offset = auth_data_offset + ql_auth_data.size as usize;
         let ql_certification_data_ptr =
             sig[ql_certification_data_offset..].as_ptr() as *const sgx_ql_certification_data_t;
         let ql_certification_data = unsafe { *ql_certification_data_ptr };
 
-        //println!("certification data offset = {}", temp_cert_data_offset);
-        //println!("certification data size = {}", temp_cert_data.size);
-
         let certification_info_data_offset =
             ql_certification_data_offset + std::mem::size_of::<sgx_ql_certification_data_t>();
 
-        //println!("cert info offset = {}", cert_info_offset);
         // this should be the last structure
         assert_eq!(
             sig.len(),
@@ -100,34 +90,36 @@ impl PCK {
         //    "expect cert key of type PPID_RSA3072_ENCRYPTED"
         //);
 
-        const ENC_PPID_LEN: usize = 384;
-        let tail_content = sig[certification_info_data_offset..].as_ref();
-        let encrypted_ppid: [u8; ENC_PPID_LEN] = tail_content[0..ENC_PPID_LEN]
-            .try_into()
-            .expect("invalid encrypted PPID");
-        let pce_id: [u8; 2] = tail_content[ENC_PPID_LEN..ENC_PPID_LEN + 2]
-            .try_into()
-            .expect("invalid PCE ID");
-        let cpu_svn: [u8; 16] = tail_content[ENC_PPID_LEN + 2..ENC_PPID_LEN + 2 + 16]
-            .try_into()
-            .expect("invalid CPU SVN");
-        let pce_isvsvn: [u8; 2] = tail_content[ENC_PPID_LEN + 2 + 16..ENC_PPID_LEN + 2 + 18]
-            .try_into()
-            .expect("invalid PCE ISV SVN");
-        println!("          EncPPID: {:02x?}", encrypted_ppid);
-        println!("           PCE_ID: {:02x?}", pce_id);
-        println!("    TCBr - CPUSVN: {:02x?}", cpu_svn);
-        println!("TCBr - PCE_ISVSVN: {:02x?}", pce_isvsvn);
-        println!("            QE_ID: {:02x?}", quote3.header.user_data);
+        let info = sig[certification_info_data_offset..].as_ref();
 
-        //let hello: [u8; 2] = pce_id.try_into().expect("invalid PCE ID");
-        //println!("hello {:?}",hello);
+        let mut taken = 0usize;
+        let mut must_take = |n: usize| -> &[u8] {
+            let out = &info[taken..(taken + n)];
+            taken += n;
+            out
+        };
+
+        let encrypted_ppid: [u8; 384] =
+            must_take(384).try_into().expect("invalid encrypted PPID");
+        let pce_id: [u8; 2] = must_take(2).try_into().expect("invalid PCE ID");
+        let cpu_svn: [u8; 16] = must_take(16).try_into().expect("invalid CPU SVN");
+        let pce_isvsvn: [u8; 2] = must_take(2).try_into().expect("invalid PCE ISV SVN");
+        let qe_id: [u8; 16] = quote3.header.user_data[..16]
+            .try_into()
+            .expect("invalid QE ID");
+        //println!("          EncPPID: {:02x?}", encrypted_ppid);
+        //println!("           PCE_ID: {:02x?}", pce_id);
+        //println!("    TCBr - CPUSVN: {:02x?}", cpu_svn);
+        //println!("TCBr - PCE_ISVSVN: {:02x?}", pce_isvsvn);
+        //println!("            QE_ID: {:02x?}", quote3.header.user_data);
+        //println!("            QE_ID: {:02x?}", qe_id);
 
         Self {
             encrypted_ppid,
             pce_id,
             cpu_svn,
             pce_isvsvn,
+            qe_id,
         }
 
         /*
