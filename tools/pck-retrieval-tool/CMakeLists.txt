@@ -46,7 +46,7 @@ add_custom_target(pack
 )
 
 add_custom_target(run
-    COMMAND LD_PRELOAD=$PWD/libdcap_quoteprov.so.1 ./app ${enclaveLib}
+    COMMAND ./app
     DEPENDS pack
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/_packed
 )

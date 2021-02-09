@@ -1,3 +1,5 @@
+use std::env;
+
 use sgx_types::*;
 
 use crate::errors;
@@ -43,4 +45,33 @@ pub fn generate_quote(eid: sgx_enclave_id_t) -> Result<Vec<u8>, String> {
     errors::qe3_error_out_if_not_ok(err, "get QE quote")?;
 
     Ok(quote)
+}
+
+pub fn set_qpl_path(path: &str) {
+    let qpl_path = if path.starts_with("/") {
+        path.to_string()
+    } else {
+        // change to absolute path
+        env::current_dir()
+            .expect("fail to get cwd")
+            .join(path)
+            .to_str()
+            .unwrap()
+            .to_string()
+    };
+
+    env::set_var("LD_PRELOAD", qpl_path);
+
+    // setting LD_PRELOAD can render the sgx_ql_set_path below redundant
+    //{
+    //    let quoteprov_path =
+    //        CString::new(opts.qpl_path).expect("failed to set 'quoteprov_path'");
+    //    let err = unsafe {
+    //        sgx_ql_set_path(
+    //            sgx_ql_path_type_t::SGX_QL_QPL_PATH,
+    //            quoteprov_path.as_ptr() as *const char,
+    //        )
+    //    };
+    //    errors::qe3_error_out_if_not_ok(err, "sgx_ql_set_path").unwrap();
+    //}
 }

@@ -2,6 +2,8 @@
 
 use std::ffi::CString;
 
+use clap::Clap;
+
 use sgx_types::*;
 use sgx_urts::SgxEnclave;
 
@@ -11,6 +13,28 @@ mod pck;
 mod quote3;
 
 use pck::PCK;
+
+#[derive(Clap)]
+#[clap(version = "1.9", author = "sammyne")]
+struct Opts {
+    #[clap(
+        default_value = "enclave.signed.so",
+        help = "path of enclave to use",
+        long = "enclave",
+        short = "e"
+    )]
+    enclave_path: String,
+    #[clap(help = "path to output PCK info", long = "pck", short = "p")]
+    pck_out_path: Option<String>,
+    #[clap(
+        default_value = "libdcap_quoteprov.so.1",
+        help = "path libdcap_quoteprov.so.1",
+        long = "qpl"
+    )]
+    qpl_path: String,
+    #[clap(help = "path to output quote", long = "quote", short = "q")]
+    quote_out_path: Option<String>,
+}
 
 fn new_enclave(enclave_path: &str) -> SgxResult<SgxEnclave> {
     let mut launch_token: sgx_launch_token_t = [0; 1024];
@@ -37,26 +61,15 @@ fn new_enclave(enclave_path: &str) -> SgxResult<SgxEnclave> {
 }
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
+    let opts = Opts::parse();
+    println!("-------------------------------------------------");
+    println!("enclave path: {}", opts.enclave_path);
+    println!("    qpl path: {}", opts.qpl_path);
+    println!("-------------------------------------------------");
 
-    if args.len() < 2 {
-        println!("missing enclave path");
-        std::process::exit(-1);
-    }
+    quote3::set_qpl_path(&opts.qpl_path);
 
-    {
-        let quoteprov_path =
-            CString::new("libdcap_quoteprov.so.1").expect("failed to set 'quoteprov_path'");
-        let err = unsafe {
-            sgx_ql_set_path(
-                sgx_ql_path_type_t::SGX_QL_QPL_PATH,
-                quoteprov_path.as_ptr() as *const char,
-            )
-        };
-        errors::qe3_error_out_if_not_ok(err, "sgx_ql_set_path").unwrap();
-    }
-
-    let enclave = new_enclave(&args[1])
+    let enclave = new_enclave(&opts.enclave_path)
         .map_err(|err| format!("new enclave: {}", err))
         .unwrap();
     println!("[+] done new enclave: {}", enclave.geteid());
