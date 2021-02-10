@@ -66,7 +66,7 @@ pub unsafe extern "C" fn ocall_sgx_qv_verify_quote(
         }
     };
 
-    qv::qv_verify_quote(
+    qv::verify_quote(
         quote,
         quote_size,
         ptr::null(),
